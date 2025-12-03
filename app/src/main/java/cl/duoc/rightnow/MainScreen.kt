@@ -85,10 +85,11 @@ fun MainScreen(
             ) { backStackEntry ->
                 val characterId = backStackEntry.arguments?.getInt("characterId") ?: 0
                 CharacterDetailScreen(
-                    characterId = characterId,
-                    navController = tabsNavController
+                    navController = tabsNavController,
+                    characterId = characterId
                 )
             }
+
         }
     }
 }
