@@ -3,12 +3,13 @@ package cl.duoc.rightnow
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Divider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,68 +37,99 @@ fun CharactersListScreen(
         )
 
         when {
-            state.isLoading -> {
+            // CARGA INICIAL (no hay personajes todavía)
+            state.isLoading && state.characters.isEmpty() -> {
                 Box(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .weight(1f),
+                        .fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
                     CircularProgressIndicator()
                 }
             }
 
-            state.errorMessage != null -> {
+            // ERROR EN LA PRIMERA CARGA
+            state.errorMessage != null && state.characters.isEmpty() -> {
                 Box(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .weight(1f),
+                        .fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
                     Text("Error: ${state.errorMessage}")
                 }
             }
 
+            // LISTA CON DATOS
             else -> {
                 LazyColumn(
                     modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
+                        .fillMaxSize()
                 ) {
-                    items(state.characters) { character ->
+                    itemsIndexed(
+                        items = state.characters,
+                        key = { _, item -> item.id }
+                    ) { index, character ->
+
                         CharacterRow(
                             character = character,
                             onClick = {
                                 navController.navigate("characterDetail/${character.id}")
                             }
                         )
+                        Divider()
+
+                        // ⚡ Disparar carga de la siguiente página cuando llegamos al último ítem
+                        val lastIndex = state.characters.lastIndex
+                        if (index == lastIndex &&
+                            !state.endReached &&
+                            !state.isLoadingMore &&
+                            !state.isLoading
+                        ) {
+                            LaunchedEffect(key1 = index) {
+                                viewModel.loadNextPage()
+                            }
+                        }
+                    }
+
+                    // ÍTEM EXTRA CUANDO ESTÁ CARGANDO MÁS PÁGINAS
+                    if (state.isLoadingMore) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator()
+                            }
+                        }
+                    }
+
+                    // MENSAJE FINAL CUANDO YA NO HAY MÁS PÁGINAS
+                    if (state.endReached && !state.isLoadingMore) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("No hay más personajes")
+                            }
+                        }
                     }
                 }
-            }
-        }
 
-        // Controles de paginación usando el ViewModel
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Button(
-                onClick = { viewModel.goToPrevPage() },
-                enabled = state.currentPage > 1
-            ) {
-                Text("Anterior")
-            }
-
-            Text("Página ${state.currentPage} / ${state.totalPages}")
-
-            Button(
-                onClick = { viewModel.goToNextPage() },
-                enabled = state.currentPage < state.totalPages
-            ) {
-                Text("Siguiente")
+                // ERROR AL CARGAR MÁS (cuando ya había algunos personajes)
+                if (state.errorMessage != null && state.characters.isNotEmpty()) {
+                    Text(
+                        text = "Error al cargar más: ${state.errorMessage}",
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp)
+                    )
+                }
             }
         }
     }

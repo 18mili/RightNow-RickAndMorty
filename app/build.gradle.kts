@@ -17,6 +17,16 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
+    packaging {
+        resources {
+            // Ignoramos archivos de licencias duplicados de JUnit / otras libs
+            excludes += "META-INF/LICENSE.md"
+            excludes += "META-INF/LICENSE-notice.md"
+            // (Opcional, para curarse en salud con otras variantes)
+            excludes += "META-INF/LICENSE*"
+            excludes += "META-INF/NOTICE*"
+        }
+    }
 
     buildTypes {
         release {
@@ -83,4 +93,36 @@ dependencies {
     // Para collectAsStateWithLifecycle
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
 
+    // ... TODAS TUS DEPENDENCIAS QUE YA TENÍAS ...
+
+    // JUnit 5
+    testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")
+
+    // Kotest
+    testImplementation("io.kotest:kotest-runner-junit5:5.8.0")
+    testImplementation("io.kotest:kotest-assertions-core:5.8.0")
+
+    // MockK
+    testImplementation("io.mockk:mockk:1.13.11")
+
+    // Coroutines test
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
+
+    // Compose UI Test
+    androidTestImplementation("io.mockk:mockk-android:1.13.11")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
+
+    // JUnit 5
+    testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")
+
+    // Kotest
+    testImplementation("io.kotest:kotest-runner-junit5:5.8.0")
+    testImplementation("io.kotest:kotest-assertions-core:5.8.0")
+
+    // Compose UI Test
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+
+}
+tasks.withType<Test> {
+    useJUnitPlatform()
 }

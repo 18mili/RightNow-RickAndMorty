@@ -12,32 +12,52 @@ class CharactersViewModel(
     private val repo: RickAndMortyRepository = RickAndMortyRepository()
 ) : ViewModel() {
 
-    // Estado interno mutable
     private val _uiState = MutableStateFlow(CharactersUiState())
-
-    // Estado expuesto a la vista (inmutable)
     val uiState: StateFlow<CharactersUiState> = _uiState
 
     init {
-        // Carga la primera página al crear el ViewModel
-        loadPage(1)
+        // Cargar la primera página al crear el ViewModel
+        loadPage(page = 1, append = false)
     }
 
-    fun loadPage(page: Int) {
+    /**
+     * Carga una página de personajes.
+     * @param page número de página a cargar
+     * @param append si true, agrega al final de la lista actual (scroll infinito)
+     */
+    private fun loadPage(page: Int, append: Boolean) {
+        val current = _uiState.value
+
+        // Evitar llamadas innecesarias
+        if (current.endReached) return
         if (page <= 0) return
+        if (current.isLoading || current.isLoadingMore) return
 
         viewModelScope.launch {
-            // Loading ON
-            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            // Activar flags de carga
+            _uiState.update {
+                it.copy(
+                    isLoading = if (!append) true else it.isLoading,
+                    isLoadingMore = if (append) true else it.isLoadingMore,
+                    errorMessage = null
+                )
+            }
 
             try {
                 val response = repo.getCharacters(page)
-                _uiState.update {
-                    it.copy(
+
+                _uiState.update { prev ->
+                    val newList =
+                        if (append) prev.characters + response.results
+                        else response.results
+
+                    prev.copy(
                         isLoading = false,
-                        characters = response.results,
+                        isLoadingMore = false,
+                        characters = newList,
                         currentPage = page,
                         totalPages = response.info.pages,
+                        endReached = response.info.next == null,
                         errorMessage = null
                     )
                 }
@@ -45,6 +65,7 @@ class CharactersViewModel(
                 _uiState.update {
                     it.copy(
                         isLoading = false,
+                        isLoadingMore = false,
                         errorMessage = e.message ?: "Error desconocido"
                     )
                 }
@@ -52,17 +73,21 @@ class CharactersViewModel(
         }
     }
 
-    fun goToNextPage() {
+    /**
+     * Llamado desde la UI cuando el usuario llega al final de la lista.
+     */
+    fun loadNextPage() {
         val state = _uiState.value
-        if (state.currentPage < state.totalPages) {
-            loadPage(state.currentPage + 1)
-        }
-    }
 
-    fun goToPrevPage() {
-        val state = _uiState.value
-        if (state.currentPage > 1) {
-            loadPage(state.currentPage - 1)
+        if (state.endReached) return
+        if (state.isLoading || state.isLoadingMore) return
+
+        val nextPage = state.currentPage + 1
+
+        if (nextPage <= state.totalPages) {
+            loadPage(page = nextPage, append = true)
+        } else {
+            _uiState.update { it.copy(endReached = true) }
         }
     }
 }
