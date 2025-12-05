@@ -236,4 +236,4 @@ UI Tests: usar un emulador en ejecución
 
 🟢 Proyecto completo
 🧪 Testing implementado
-📌 Cumple con todas las actividades del curso
+
